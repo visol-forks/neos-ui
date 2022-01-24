@@ -19,8 +19,6 @@ use Neos\Flow\I18n\Exception\InvalidLocaleIdentifierException;
 use Neos\Flow\I18n\Locale;
 use Neos\Flow\I18n\Service;
 use Neos\Flow\I18n\Translator;
-use Neos\Flow\Mvc\ActionRequest;
-use Neos\Flow\Mvc\ActionResponse;
 use Neos\Flow\Mvc\Controller\ActionController;
 use Neos\Flow\Mvc\RequestInterface;
 use Neos\Flow\Mvc\ResponseInterface;
@@ -146,7 +144,7 @@ class BackendServiceController extends ActionController
      * @param ResponseInterface $response
      * @return void
      */
-    protected function initializeController(ActionRequest $request, ActionResponse $response)
+    public function initializeController(RequestInterface $request, ResponseInterface $response)
     {
         parent::initializeController($request, $response);
         $this->feedbackCollection->setControllerContext($this->getControllerContext());

@@ -11,16 +11,15 @@ namespace Neos\Neos\Ui\Fusion\ExceptionHandler;
  * source code.
  */
 
-use function GuzzleHttp\Psr7\str;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Exception;
+use Neos\Flow\Http\ContentStream;
+use Neos\Flow\Http\Response;
 use Neos\Flow\Mvc\View\ViewInterface;
 use Neos\Flow\Utility\Environment;
 use Neos\FluidAdaptor\View\StandaloneView;
 use Neos\Fusion\Core\ExceptionHandlers\AbstractRenderingExceptionHandler;
 use Neos\Fusion\Core\ExceptionHandlers\HtmlMessageHandler;
-use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\Http\Message\StreamFactoryInterface;
 
 /**
  * A page exception handler for the new UI.
@@ -30,18 +29,6 @@ use Psr\Http\Message\StreamFactoryInterface;
  */
 class PageExceptionHandler extends AbstractRenderingExceptionHandler
 {
-    /**
-     * @Flow\Inject
-     * @var ResponseFactoryInterface
-     */
-    protected $responseFactory;
-
-    /**
-     * @Flow\Inject
-     * @var StreamFactoryInterface
-     */
-    protected $contentFactory;
-
     /**
      * @Flow\Inject
      * @var Environment
@@ -59,7 +46,7 @@ class PageExceptionHandler extends AbstractRenderingExceptionHandler
      * @throws \Neos\Flow\Security\Exception
      * @throws \Neos\FluidAdaptor\Exception
      */
-    protected function handle($fusionPath, \Exception $exception, $referenceCode): string
+    protected function handle($fusionPath, \Exception $exception, $referenceCode)
     {
         $handler = new HtmlMessageHandler($this->environment->getContext()->isDevelopment());
         $handler->setRuntime($this->runtime);
@@ -81,11 +68,17 @@ class PageExceptionHandler extends AbstractRenderingExceptionHandler
      */
     protected function wrapHttpResponse(\Exception $exception, string $bodyContent): string
     {
-        $response = $this->responseFactory->createResponse($exception instanceof Exception ? $exception->getStatusCode() : 500)
-            ->withBody($this->contentFactory->createStream($bodyContent))
+        $body = fopen('php://temp', 'rw');
+        fputs($body, $bodyContent);
+        rewind($body);
+
+        /** @var Response $response */
+        $response = (new Response())
+            ->withStatus($exception instanceof Exception ? $exception->getStatusCode() : 500)
+            ->withBody(new ContentStream($body))
             ->withHeader('Cache-Control', 'no-store');
 
-        return str($response);
+        return implode("\r\n", $response->renderHeaders()) . "\r\n\r\n" . $response->getContent();
     }
 
     /**
